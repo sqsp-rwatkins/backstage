@@ -1,7 +1,7 @@
 {
   "name": "@techdocs/cli",
   "description": "Utility CLI for managing TechDocs sites in Backstage.",
-  "version": "1.4.3-next.0",
+  "version": "1.4.2",
   "publishConfig": {
     "access": "public"
   },
@@ -11,8 +11,7 @@
   "homepage": "https://backstage.io",
   "repository": {
     "type": "git",
-    "url": "https://github.com/backstage/backstage",
-    "directory": "packages/techdocs-cli"
+    "url": "https://github.com/backstage/backstage"
   },
   "keywords": [
     "backstage",
@@ -36,7 +35,7 @@
     "techdocs-cli": "bin/techdocs-cli"
   },
   "devDependencies": {
-    "@backstage/cli": "workspace:^",
+    "@backstage/cli": "^0.22.8",
     "@frsource/cypress-plugin-visual-regression-diff": "^3.2.8",
     "@types/commander": "^2.12.2",
     "@types/fs-extra": "^9.0.6",
@@ -60,11 +59,11 @@
     "ext": "ts"
   },
   "dependencies": {
-    "@backstage/backend-common": "workspace:^",
-    "@backstage/catalog-model": "workspace:^",
-    "@backstage/cli-common": "workspace:^",
-    "@backstage/config": "workspace:^",
-    "@backstage/plugin-techdocs-node": "workspace:^",
+    "@backstage/backend-common": "^0.19.0",
+    "@backstage/catalog-model": "^1.4.0",
+    "@backstage/cli-common": "^0.1.12",
+    "@backstage/config": "^1.0.8",
+    "@backstage/plugin-techdocs-node": "^1.7.2",
     "@types/dockerode": "^3.3.0",
     "commander": "^9.1.0",
     "dockerode": "^3.3.1",
