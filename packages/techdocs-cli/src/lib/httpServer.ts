@@ -19,7 +19,7 @@ import http from 'node:http';
 import httpProxy from 'http-proxy';
 import fs from 'fs-extra';
 import { createLogger } from './utility';
-import path from 'path';
+import path from 'node:path';
 import {
   proxyHtmlWithLivereloadInjection,
   proxyMkdocsLivereload,

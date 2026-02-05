@@ -16,64 +16,62 @@
  */
 
 /**
- * Resolves workspace:^ (and similar) dependencies in package.json to concrete
- * ^<version> ranges using the workspace packages' versions, so the package can
- * be packed (npm pack) and installed elsewhere without the monorepo.
+ * Resolves workspace:^ dependencies in package.json to concrete ^version ranges
+ * using the versions from the monorepo workspace packages. Used before npm pack
+ * so the tarball can be installed with plain npm install (e.g. in Docker).
  *
- * Run from packages/techdocs-cli (e.g. node scripts/prepare-publish.js).
- * Overwrites package.json in place; run before `npm pack`.
+ * Run from packages/techdocs-cli. Mutates package.json in place.
  */
 
 const fs = require('node:fs');
 const path = require('node:path');
 
-const pkgDir = path.join(__dirname, '..');
-const rootDir = path.join(pkgDir, '../..');
-const pkgPath = path.join(pkgDir, 'package.json');
+const repoRoot = path.resolve(__dirname, '../..');
+const cliDir = path.resolve(__dirname, '..');
 
-const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+function getWorkspaceVersions() {
+  const map = {};
+  const packagesDir = path.join(repoRoot, 'packages');
+  const pluginsDir = path.join(repoRoot, 'plugins');
 
-function resolveWorkspaceVersion(name) {
-  // @backstage/foo -> packages/foo or plugins/foo
-  // @backstage/plugin-foo -> plugins/foo (Backstage plugin folder convention)
-  const shortName = name.replace(/^@backstage\//, '');
-  const candidates = [
-    path.join(rootDir, 'packages', shortName, 'package.json'),
-    path.join(rootDir, 'plugins', shortName, 'package.json'),
-  ];
-  if (shortName.startsWith('plugin-')) {
-    candidates.push(
-      path.join(
-        rootDir,
-        'plugins',
-        shortName.replace(/^plugin-/, ''),
-        'package.json',
-      ),
-    );
-  }
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      const sub = JSON.parse(fs.readFileSync(candidate, 'utf8'));
-      return sub.version;
+  for (const dir of [packagesDir, pluginsDir]) {
+    if (!fs.existsSync(dir)) continue;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const ent of entries) {
+      if (!ent.isDirectory()) continue;
+      const pkgPath = path.join(dir, ent.name, 'package.json');
+      if (!fs.existsSync(pkgPath)) continue;
+      try {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        if (pkg.name && pkg.version) map[pkg.name] = pkg.version;
+      } catch (error) {
+        console.error(`Error parsing package.json: ${pkgPath}`);
+        console.error(error);
+      }
     }
   }
-  throw new Error(`Could not resolve workspace version for ${name}`);
+  return map;
 }
 
-function resolveDeps(deps) {
-  if (!deps) return deps;
+function resolveDeps(deps, versions) {
+  if (!deps || typeof deps !== 'object') return deps;
   const out = { ...deps };
-  for (const [name, value] of Object.entries(out)) {
-    if (typeof value === 'string' && value.startsWith('workspace:')) {
-      const version = resolveWorkspaceVersion(name);
-      out[name] = `^${version}`;
+  for (const [name, range] of Object.entries(out)) {
+    if (typeof range === 'string' && range.startsWith('workspace:')) {
+      const ver = versions[name];
+      if (ver) out[name] = `^${ver}`;
     }
   }
   return out;
 }
 
-pkg.dependencies = resolveDeps(pkg.dependencies);
-pkg.devDependencies = resolveDeps(pkg.devDependencies);
+const versions = getWorkspaceVersions();
+const pkgPath = path.join(cliDir, 'package.json');
+const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+
+pkg.dependencies = resolveDeps(pkg.dependencies, versions);
+// devDependencies are not included in the pack by default; resolve in case we ever need them
+pkg.devDependencies = resolveDeps(pkg.devDependencies, versions);
 
 fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
-console.log('Resolved workspace deps in package.json for packing.');
+console.log('Resolved workspace deps in package.json for pack');
